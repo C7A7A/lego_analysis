@@ -1,0 +1,176 @@
+---
+title: "Rebrickable analysis"
+author: "Mateusz Czajka"
+date: "2023-12-05"
+output:
+  html_document: 
+    toc: yes
+    toc_float: yes
+    theme: cosmo
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE
+)
+```
+# Libraries
+```{r, echo=TRUE}
+library(ggplot2)
+library(dplyr)
+library(skimr)
+library(png)
+library(grid)
+```
+# Load data
+```{r, cache=TRUE, echo=TRUE}
+load_csv <- function(csv_name, data_folder = 'data') {
+  df <- read.csv(file.path(data_folder, csv_name))
+  as_tibble(df)
+}
+
+inventories_df <- load_csv('inventories.csv')
+inventory_sets_df <- load_csv('inventory_sets.csv')
+sets_df <- load_csv('sets.csv')
+themes_df <- load_csv('themes.csv')
+inventory_minifigs_df <- load_csv('inventory_minifigs.csv')
+minifigs_df <- load_csv('minifigs.csv')
+inventory_parts_df <- load_csv('inventory_parts.csv')
+colors_df <- load_csv('colors.csv')
+parts_df <- load_csv('parts.csv')
+elements_df <- load_csv('elements.csv')
+part_categories_df <- load_csv('part_categories.csv')
+part_relationships_df <- load_csv('part_relationships.csv')
+```
+
+```{r}
+dataframes_list <- list(
+  inventories = inventories_df,
+  inventory_sets = inventory_sets_df,
+  sets = sets_df,
+  themes = themes_df,
+  inventory_minifigs = inventory_minifigs_df,
+  minifigs = minifigs_df,
+  inventory_parts = inventory_parts_df,
+  colors = colors_df,
+  parts = parts_df,
+  elements = elements_df,
+  part_categories = part_categories_df,
+  part_relationships = part_relationships_df
+)
+```
+
+# Basic tables analysis
+## Data schema
+```{r}
+image_path <- "data/rebrickable_schema_v3.png"
+rebrickable_schema <- readPNG(image_path)
+
+image_plot <- ggplot() +
+  annotation_custom(
+    rasterGrob(
+      rebrickable_schema, 
+      interpolate = TRUE
+    ), 
+    xmin = -Inf, 
+    xmax = Inf, 
+    ymin = -Inf, 
+    ymax = Inf) +
+  theme_void()
+
+image_plot
+```
+
+## Tables
+
+### Inventories
+```{r}
+  knitr::kable((head(inventories_df)))
+  skim(inventories_df)
+```
+### Inventory sets
+```{r}
+  knitr::kable((head(inventory_sets_df)))
+  skim(inventory_sets_df)
+```
+### Sets
+```{r}
+  knitr::kable((head(sets_df)))
+  skim(sets_df)
+```
+### Themes
+```{r}
+  knitr::kable((head(themes_df)))
+  skim(themes_df)
+```
+### Inventory Minifigs
+```{r}
+  knitr::kable((head(inventory_minifigs_df)))
+  skim(inventory_minifigs_df)
+```
+### Minifigs
+```{r}
+  knitr::kable((head(minifigs_df)))
+  skim(minifigs_df)
+```
+### Inventory parts
+```{r}
+  knitr::kable((head(inventory_parts_df)))
+  skim(inventory_parts_df)
+```
+### Colors
+```{r}
+  knitr::kable((head(colors_df)))
+  skim(colors_df)
+```
+### Parts
+```{r}
+  knitr::kable((head(parts_df)))
+  skim(parts_df)
+```
+### Elements
+```{r}
+  knitr::kable((head(elements_df)))
+  skim(elements_df)
+```
+### Part Relationships
+```{r}
+  knitr::kable((head(part_relationships_df)))
+  skim(part_relationships_df)
+```
+### Part categories
+```{r}
+  knitr::kable((head(part_categories_df)))
+  skim(part_categories_df)
+```
+## Dataframes size
+```{r, comment=NA}
+  count_all_rows <- 0
+  count_all_columns <- 0
+  count_all_values <- 0
+  
+  for (df in dataframes_list) {
+    dimensions <- dim(df)
+      
+    count_all_rows <- count_all_rows + dimensions[1]
+    count_all_columns <- count_all_columns + dimensions[2]
+    count_all_values <- count_all_values + dimensions[1] * dimensions[2]
+  }
+  
+  cat("All rows in dataframes: ", as.character(count_all_rows), "\n")
+  cat("All columns in dataframes: ", as.character(count_all_columns), "\n")
+  cat("All values in dataframes: ", as.character(count_all_values), "\n")
+```
+
+# Process missing data
+
+# Analysis deep dive
+
+# Correlation betweend variables
+
+# More analysis (interactive + animations)
+
+# Trends
+
+# Forecasting
+
