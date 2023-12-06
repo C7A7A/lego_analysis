@@ -21,6 +21,7 @@ library(dplyr)
 library(skimr)
 library(png)
 library(grid)
+library(plotly)
 ```
 # Load data
 ```{r, cache=TRUE, echo=TRUE}
@@ -58,6 +59,8 @@ dataframes_list <- list(
   part_categories = part_categories_df,
   part_relationships = part_relationships_df
 )
+
+dataframes_names <- names(dataframes_list)
 ```
 
 # Basic tables analysis
@@ -82,6 +85,12 @@ image_plot
 ```
 
 ## Tables
+```{r, comment=NA}
+printBasicSummary <- function(df) {
+  knitr::kable((head(df)))
+  skim(df)
+}
+```
 
 ### Inventories
 ```{r}
@@ -162,11 +171,178 @@ image_plot
   cat("All values in dataframes: ", as.character(count_all_values), "\n")
 ```
 
-# Process missing data
-
 # Analysis deep dive
+### Themes
+#### Themes sum of rows with NA value
+```{r}
+sum(is.na(themes_df))
+```
+All NA values are in parent_id column
+```{r}
+themes_df %>% summarise(across(everything(), ~ sum(is.na(.))))
+```
 
-# Correlation betweend variables
+Create themes_parent_df
+```{r}
+themes_parent_df <- subset(themes_df, is.na(parent_id))
+themes_parent_df <- themes_parent_df %>% select(-parent_id)
+themes_parent_df
+```
+Join themes_parent_df with themes_df, insert name_child into name_parent if name_parent is NA
+```{r}
+themes_with_parents_df <- left_join(themes_df, themes_parent_df, by = join_by(parent_id == id), suffix = c("_child", "_parent"))
+themes_with_parents_df <- themes_with_parents_df %>%
+  select(-parent_id) %>%
+  mutate(name_parent = ifelse(is.na(name_parent), name_child, name_parent)) %>%
+  print()
+```
+### Sets
+#### Sets sum of rows with NA value
+```{r}
+sum(is.na(sets_df))
+```
+
+#### Correlation between year and num_parts
+```{r}
+year_num_parts_df <- select(sets_df, year, num_parts)
+
+ggplot(year_num_parts_df, aes(x = year, y = num_parts)) +
+  geom_point(color="#225555") +
+  labs(title = "Scatter Plot of Year vs. Number of Parts",
+       x = "Year",
+       y = "Number of Parts")
+```
+```{r}
+grouped_by_year <- sets_df %>%
+  group_by(year) %>%
+  summarise(
+    count_sets = n(),
+    sum_parts = sum(num_parts),
+    mean_parts = mean(num_parts),
+    median_parts = median(num_parts),
+    min_parts = min(num_parts),
+    max_parts = max(num_parts)
+  )
+
+ggplot(grouped_by_year, aes(x = year, y = count_sets)) +
+  geom_line(stat = "identity") +
+  geom_smooth(color="#222255") +
+  labs(title = "Sum of sets in each year",
+       x = "Year",
+       y = "Sum of sets") +
+  theme_bw()
+```
+```{r}
+ggplot(grouped_by_year, aes(x = year, y = sum_parts)) +
+  geom_line(stat = "identity") +
+  geom_smooth(color="#222255") +
+  labs(title = "Sum of parts in each year",
+       x = "Year",
+       y = "Sum of parts") +
+  scale_y_continuous(labels = scales::number_format()) +
+  theme_bw()
+```
+
+#### Join sets with prepared themes
+```{r}
+sets_themes <- left_join(sets_df, themes_with_parents_df, by = join_by(theme_id == id))
+sets_themes <- sets_themes %>% select(-set_num, -theme_id, -img_url, -name)
+sets_themes
+```
+156 Parent themes with number of sets and sum of parts
+```{r}
+themes_data <- sets_themes %>%
+  group_by(name_parent) %>%
+  summarize(
+    count_sets = n(),
+    sum_parts = sum(num_parts)
+  )
+
+themes_data
+```
+
+```{r}
+plot_ly(
+    themes_data, 
+    x = ~count_sets, 
+    y = ~sum_parts, 
+    text = ~name_parent, 
+    type = "scatter", 
+    mode = "markers",
+    marker = list(color="#225555")
+  ) %>%
+  layout(title = "Sum of parts and sets for each theme",
+         xaxis = list(title = "Count Sets"),
+         yaxis = list(title = "Sum of Parts"))
+```
+Top 10 themes based on number of sets
+```{r}
+top_10_themes <- themes_data %>%
+  top_n(10, wt = count_sets) %>%
+  arrange(desc(count_sets))
+
+top_10_themes
+```
+
+```{r}
+ggplot(top_10_themes, aes(x=reorder(name_parent, count_sets), y=count_sets)) +
+  geom_bar(stat="identity", fill = "#225555") +
+  coord_flip() +
+  labs(title = "Number of sets in top 10 most popular themes ",
+       x = "Theme name",
+       y = "Sum of sets") +
+  theme_bw()
+```
+```{r}
+sets_themes_grouped <- sets_themes %>%
+  group_by(year, name_parent) %>%
+  summarise(
+    count_sets = n(),
+    sum_parts = sum(num_parts)
+  , .groups = 'drop')
+```
+
+```{r}
+plot_ly(
+    sets_themes_grouped, 
+    x = ~year, 
+    y = ~count_sets, 
+    color = ~factor(name_parent),
+    type = "scatter",
+    mode = "markers",
+    text = ~paste("Theme: ", name_parent, "<br>Year: ", year, "<br>Count of Sets: ", count_sets),
+    hoverinfo = "text",
+    marker = list(size = 7)
+  ) %>%
+  layout(
+    title = "Count of Sets Over Time for Different Themes",
+    xaxis = list(title = "Year"),
+    yaxis = list(title = "Count of Sets")
+  )
+
+```
+
+```{r}
+#plot_ly(
+#    sets_themes_grouped, 
+#    x = ~year, 
+#    z = ~sum_parts,
+#    y = ~count_sets, 
+#    color = ~factor(name_parent),
+#    line=list(width=4),
+#    text = ~paste("Theme: ", name_parent, "<br>Year: ", year, "<br>Count of Sets: ", count_sets, "<br>Sum of Parts: ", sum_parts),
+#    hoverinfo = "text"
+#  ) %>%
+#  add_lines() %>%
+#  layout(
+#    title = "Count of Sets and Sum of Parts Over Time for Different Themes",
+#    xaxis = list(title = "Year"),
+#    zaxis = list(title = "Sum of Parts"),
+#    yaxis = list(title = "Count of Sets")
+#  )
+```
+
+
 
 # More analysis (interactive + animations)
 
