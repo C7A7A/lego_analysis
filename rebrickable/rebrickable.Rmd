@@ -11,14 +11,17 @@ output:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(
-  echo = FALSE
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE,
+  fig.width = 8,
+  fig.height = 8
 )
 ```
 # Libraries
 ```{r, echo=TRUE}
 library(ggplot2)
 library(dplyr)
-library(skimr)
 library(png)
 library(grid)
 library(plotly)
@@ -27,7 +30,7 @@ library(plotly)
 ```{r, cache=TRUE, echo=TRUE}
 load_csv <- function(csv_name, data_folder = 'data') {
   df <- read.csv(file.path(data_folder, csv_name))
-  as_tibble(df)
+  df
 }
 
 inventories_df <- load_csv('inventories.csv')
@@ -85,72 +88,66 @@ image_plot
 ```
 
 ## Tables
-```{r, comment=NA}
-printBasicSummary <- function(df) {
-  knitr::kable((head(df)))
-  skim(df)
-}
-```
 
 ### Inventories
 ```{r}
   knitr::kable((head(inventories_df)))
-  skim(inventories_df)
+  summary(inventories_df)
 ```
 ### Inventory sets
 ```{r}
   knitr::kable((head(inventory_sets_df)))
-  skim(inventory_sets_df)
+  summary(inventories_df)
 ```
 ### Sets
 ```{r}
   knitr::kable((head(sets_df)))
-  skim(sets_df)
+  summary(sets_df)
 ```
 ### Themes
 ```{r}
   knitr::kable((head(themes_df)))
-  skim(themes_df)
+  summary(themes_df)
 ```
 ### Inventory Minifigs
 ```{r}
   knitr::kable((head(inventory_minifigs_df)))
-  skim(inventory_minifigs_df)
+  summary(inventory_minifigs_df)
 ```
 ### Minifigs
 ```{r}
   knitr::kable((head(minifigs_df)))
-  skim(minifigs_df)
+  summary(minifigs_df)
 ```
 ### Inventory parts
 ```{r}
   knitr::kable((head(inventory_parts_df)))
-  skim(inventory_parts_df)
+  summary(inventory_parts_df)
 ```
 ### Colors
 ```{r}
   knitr::kable((head(colors_df)))
-  skim(colors_df)
+  summary(colors_df)
 ```
 ### Parts
 ```{r}
   knitr::kable((head(parts_df)))
-  skim(parts_df)
+  summary(parts_df)
 ```
 ### Elements
 ```{r}
   knitr::kable((head(elements_df)))
-  skim(elements_df)
+  summary(elements_df)
 ```
 ### Part Relationships
 ```{r}
   knitr::kable((head(part_relationships_df)))
-  skim(part_relationships_df)
+  summary(part_relationships_df)
 ```
 ### Part categories
 ```{r}
   knitr::kable((head(part_categories_df)))
-  skim(part_categories_df)
+  summary(part_categories_df)
 ```
 ## Dataframes size
 ```{r, comment=NA}
@@ -186,28 +183,29 @@ Create themes_parent_df
 ```{r}
 themes_parent_df <- subset(themes_df, is.na(parent_id))
 themes_parent_df <- themes_parent_df %>% select(-parent_id)
-themes_parent_df
+
+knitr::kable(head(themes_parent_df)) 
 ```
 Join themes_parent_df with themes_df, insert name_child into name_parent if name_parent is NA
 ```{r}
 themes_with_parents_df <- left_join(themes_df, themes_parent_df, by = join_by(parent_id == id), suffix = c("_child", "_parent"))
 themes_with_parents_df <- themes_with_parents_df %>%
   select(-parent_id) %>%
-  mutate(name_parent = ifelse(is.na(name_parent), name_child, name_parent)) %>%
-  print()
+  mutate(name_parent = ifelse(is.na(name_parent), name_child, name_parent))
+
+knitr::kable(head(themes_with_parents_df)) 
 ```
 ### Sets
 #### Sets sum of rows with NA value
 ```{r}
 sum(is.na(sets_df))
 ```
-
 #### Correlation between year and num_parts
 ```{r}
 year_num_parts_df <- select(sets_df, year, num_parts)
 
 ggplot(year_num_parts_df, aes(x = year, y = num_parts)) +
-  geom_point(color="#225555") +
+  geom_point(color="#1f78b4") +
   labs(title = "Scatter Plot of Year vs. Number of Parts",
        x = "Year",
        y = "Number of Parts")
@@ -231,7 +229,7 @@ grouped_by_year <- sets_df %>%
 
 ggplot(grouped_by_year, aes(x = year, y = count_sets)) +
   geom_line(stat = "identity") +
-  geom_smooth(color="#222255") +
+  geom_smooth(color="#1f78b4") +
   labs(title = "Sum of sets in each year",
        x = "Year",
        y = "Sum of sets") +
@@ -240,7 +238,7 @@ ggplot(grouped_by_year, aes(x = year, y = count_sets)) +
 ```{r}
 ggplot(grouped_by_year, aes(x = year, y = sum_parts)) +
   geom_line(stat = "identity") +
-  geom_smooth(color="#222255") +
+  geom_smooth(color="#1f78b4") +
   labs(title = "Sum of parts in each year",
        x = "Year",
        y = "Sum of parts") +
@@ -251,8 +249,8 @@ ggplot(grouped_by_year, aes(x = year, y = sum_parts)) +
 #### Join sets with prepared themes
 ```{r}
 sets_themes <- left_join(sets_df, themes_with_parents_df, by = join_by(theme_id == id))
-sets_themes <- sets_themes %>% select(-set_num, -theme_id, -img_url, -name)
-sets_themes
+sets_themes <- sets_themes %>% select(-set_num, -theme_id, -name)
+knitr::kable(head(sets_themes)) 
 ```
 156 Parent themes with number of sets and sum of parts
 ```{r}
@@ -263,7 +261,7 @@ themes_data <- sets_themes %>%
     sum_parts = sum(num_parts)
   )
 
-themes_data
+knitr::kable(head(themes_data)) 
 ```
 
 ```{r}
@@ -274,7 +272,7 @@ plot_ly(
     text = ~name_parent, 
     type = "scatter", 
     mode = "markers",
-    marker = list(color="#225555")
+    marker = list(color="#1f78b4")
   ) %>%
   layout(title = "Sum of parts and sets for each theme",
          xaxis = list(title = "Count Sets"),
@@ -290,14 +288,15 @@ top_15_themes
 ```
 
 ```{r}
-ggplot(top_15_themes, aes(x=reorder(name_parent, count_sets), y=count_sets)) +
-  geom_bar(stat="identity", fill = "#225555") +
-  coord_flip() +
-  labs(title = "Number of sets in top 15 most popular themes",
-       x = "Theme name",
-       y = "Sum of sets") +
-  theme_bw()
+ggplotly(
+  ggplot(top_15_themes, aes(x=reorder(name_parent, count_sets), y=count_sets, fill = "#1f78b4")) +
+    geom_bar(stat="identity", fill = "#1f78b4") +
+    coord_flip() +
+    labs(title = "Number of sets in top 15 most popular themes", x = "Theme name", y = "Sum of sets") +
+    theme_bw()
+)
 ```
+
 ```{r}
 sets_themes_grouped <- sets_themes %>%
   group_by(year, name_parent) %>%
@@ -369,7 +368,6 @@ plot_ly(
     barmode = 'stack'
   )
 ```
-
 ```{r}
 #plot_ly(
 #    sets_themes_grouped, 
@@ -390,10 +388,285 @@ plot_ly(
 #  )
 ```
 
+### Parts
+#### Parts sum of rows with NA value
+```{r}
+sum(is.na(parts_df))
+```
+```{r}
+parts_df_material_grouped <- parts_df %>%
+  group_by(part_material) %>%
+  summarise(
+    count = n()
+  )
 
+ggplot(parts_df_material_grouped, aes(x=reorder(part_material, count), y=count)) +
+  geom_bar(stat="identity", fill = "#1f78b4") +
+  coord_flip() +
+  labs(title = "Material type of Lego parts (log10)",
+       x = "Material",
+       y = "log(Count of parts)10") +
+  theme_bw() +
+  scale_y_log10()
+```
+### Part categories
+#### Part categories sum of rows with NA value
+```{r}
+sum(is.na(part_categories_df))
+```
+### Join parts with part_categories
+```{r}
+parts_with_categories <- left_join(parts_df, part_categories_df, by = join_by(part_cat_id == id), suffix = c("_parts", "_categories"))
+parts_with_categories <- select(parts_with_categories, -name_parts)
+knitr::kable(head(parts_with_categories)) 
+```
 
-# More analysis (interactive + animations)
+```{r}
+parts_with_categories_grouped_categories <- parts_with_categories %>%
+  group_by(name_categories, part_material) %>%
+  summarise(
+    count = n()
+  )
 
+parts_with_categories_grouped_categories
+```
+### Part relationships
+#### Part rategories sum of rows with NA value
+```{r}
+sum(is.na(elements_df))
+```
+All NA values are in design_id column
+```{r}
+elements_df %>% summarise(across(everything(), ~ sum(is.na(.))))
+```
+I don't know what design_id reffers to (there is no table with design_id key) so I'm going to remove design_id column
+```{r}
+elements_df <- select(elements_df, -design_id)
+```
+
+### Join parts_with_categories with elements
+```{r}
+parts_with_categories_and_elements <- left_join(parts_with_categories, elements_df, by = join_by(part_num == part_num))
+knitr::kable(head(parts_with_categories_and_elements)) 
+```
+
+Parts without any elements
+```{r}
+has_na <- !complete.cases(parts_with_categories_and_elements)
+parts_without_elements <- parts_with_categories_and_elements[has_na, ]
+parts_without_elements <- select(parts_without_elements, -element_id, -color_id)
+knitr::kable(head(parts_without_elements)) 
+```
+
+Parts with any elements
+```{r}
+parts_with_elements <- parts_with_categories_and_elements[!has_na, ]
+parts_with_elements <- select(parts_with_elements, -element_id)
+knitr::kable(head(parts_with_elements))
+```
+
+```{r}
+count_parts_with_without_elements <- data.frame(
+  category = c("with_elements", "without_elements"),
+  count = c(nrow(parts_with_elements), nrow(parts_without_elements))
+)
+
+ggplot(count_parts_with_without_elements, aes(x = category, y = count, fill = category)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Number of Parts with and without Elements", x = "Category", y = "Count") +
+  theme_bw() +
+  scale_color_brewer(palette = "Paired")
+```
+
+Categories of parts without any elements
+```{r}
+parts_without_elements_grouped <- parts_without_elements %>%
+  group_by(name_categories, part_material) %>%
+  summarise(
+    count = n()
+  )
+
+parts_without_elements_grouped
+```
+```{r}
+parts_without_elements_grouped_filtered <- parts_without_elements_grouped[parts_without_elements_grouped$count >= 200, ]
+
+ggplotly(
+  ggplot(parts_without_elements_grouped_filtered, aes(x = reorder(name_categories, count), y = count, fill = part_material)) +
+    coord_flip() +
+    geom_histogram(stat="identity", position="stack") +
+    facet_wrap(~part_material) +
+    labs(x = "Part Categories", y = "Count", title = "Distribution of Parts without elements by Category and Material") +
+    scale_y_continuous(breaks = seq(0, 2200, 1000)) +
+    theme_bw() +
+    theme(axis.text.y = element_text(size = 6)) +
+    scale_color_brewer(palette = "Paired")
+)
+```
+
+Categories of parts with any elements
+```{r}
+parts_with_elements_grouped <- parts_with_elements %>%
+  group_by(name_categories, part_material) %>%
+  summarise(
+    count = n()
+  )
+
+parts_with_elements_grouped
+```
+
+```{r}
+parts_with_elements_grouped_filtered <- parts_with_elements_grouped[parts_with_elements_grouped$count >= 200, ]
+
+ggplotly(
+  ggplot(parts_with_elements_grouped_filtered, aes(x = reorder(name_categories, count), y = count, fill = part_material)) +
+    coord_flip() +
+    geom_histogram(stat="identity", position="stack") +
+    facet_wrap(~part_material) +
+    labs(x = "Part Categories", y = "Count", title = "Distribution of Parts with elements by Category and Material") +
+    scale_y_continuous(breaks = seq(0, 6000, 2000)) +
+    theme_bw() +
+    theme(axis.text.y = element_text(size = 6)) +
+    scale_fill_manual(values = c("#33a02c", "#1f78b4"))
+)
+```
+
+### Colors
+#### Colors sum of rows with NA value
+```{r}
+sum(is.na(colors_df))
+```
+### Join parts_with_categories_and_elements with colors
+```{r}
+parts_full_data <- left_join(parts_with_categories_and_elements, colors_df, by = join_by(color_id == id))
+knitr::kable(head(parts_full_data)) 
+```
+```{r}
+is_color_na <- is.na(parts_full_data$color_id)
+parts_full_data_without_color = parts_full_data[is_color_na, ]
+parts_full_data_with_color = parts_full_data[!is_color_na, ]
+
+count_color_data <- data.frame(
+  category = c("without_color", "with_color"),
+  count = c(nrow(parts_full_data_without_color), nrow(parts_full_data_with_color))
+)
+
+ggplot(count_color_data, aes(x = category, y = count, fill = category)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Number of Parts with and without Color", x = "Category", y = "Count") +
+  theme_bw() +
+  scale_color_brewer(palette = "Paired")
+```
+```{r}
+parts_full_data_with_color_grouped <- parts_full_data_with_color %>%
+  group_by(name, rgb) %>%
+  summarise(
+    count_color = n()
+  )
+
+parts_full_data_with_color_grouped
+```
+Most popular colors
+```{r}
+top_colors <- parts_full_data_with_color_grouped[parts_full_data_with_color_grouped$count_color >= 1000, ]
+top_colors$rgb_fill <- sapply(top_colors$rgb, function(x) {
+  paste0("#", toupper(x))
+})
+
+top_colors
+```
+```{r}
+bar_plot <- ggplot(top_colors, aes(x = reorder(name, count_color), y = count_color, fill = rgb_fill)) +
+    geom_bar(stat = "identity") +
+    scale_fill_identity() +
+    coord_flip() +
+    labs(title = "Most popular colors",
+         x = "Color name",
+         y = "Count of Partsr") +
+    theme_bw()
+
+ggplotly(bar_plot, tooltip = c("text", "fill"))
+```
+
+## Analysis in inventories
+### Minifigures
+```{r}
+minifigures <- left_join(inventory_minifigs_df, minifigs_df, by = join_by(fig_num == fig_num))
+knitr::kable(head(minifigures))
+
+top_stock_minfigures <- minifigures %>% 
+  select(-inventory_id, -num_parts) %>%
+  group_by(fig_num) %>%
+  summarise(
+    sum_quantity = sum(quantity),
+    name = first(name),
+    img_url = first(img_url)
+  ) %>%
+  top_n(10, wt=(sum_quantity)) %>%
+  arrange(desc(sum_quantity))
+```
+Largest stock of minifigures
+```{r}
+top_stock_minfigures %>%
+  select(name, img_url, sum_quantity) %>%
+  mutate(img_tag = paste0('![](', img_url, '){width=30%}')) %>%
+  select(-img_url) %>%
+  knitr::kable(format = "html")
+```
+
+### Parts
+```{r}
+inventory_parts <- inner_join(inventory_parts_df, parts_df, by = join_by(part_num == part_num))
+knitr::kable(head(inventory_parts))
+
+top_stock_parts <- inventory_parts %>% 
+  group_by(part_num) %>%
+  summarise(
+    sum_quantity = sum(quantity),
+    name = first(name),
+    img_url = first(img_url)
+  ) %>%
+  top_n(10, wt=(sum_quantity)) %>%
+  arrange(desc(sum_quantity)) %>%
+  slice_head(n = 10)
+
+# knitr::kable(top_stock_parts)
+```
+Largest stock of parts
+```{r}
+top_stock_parts %>%
+  select(name, img_url, sum_quantity) %>%
+  mutate(img_tag = paste0('![](', img_url, '){width=30%}')) %>%
+  select(-img_url) %>%
+  knitr::kable(format = "html")
+```
+
+### Sets
+```{r}
+inventory_sets <- inner_join(inventory_sets_df, sets_df, by = join_by(set_num == set_num))
+knitr::kable(head(inventory_sets))
+
+top_stock_sets <- inventory_sets %>% 
+  group_by(set_num) %>%
+  summarise(
+    sum_quantity = sum(quantity),
+    name = first(name),
+    img_url = first(img_url)
+  ) %>%
+  top_n(10, wt=(sum_quantity)) %>%
+  arrange(desc(sum_quantity)) %>%
+  slice_head(n = 10)
+
+# knitr::kable(top_stock_sets)
+```
+Largest stock of sets
+```{r}
+top_stock_sets %>%
+  select(name, img_url, sum_quantity) %>%
+  mutate(img_tag = paste0('![](', img_url, '){width=30%}')) %>%
+  select(-img_url) %>%
+  knitr::kable(format = "html")
+```
 # Trends
 
 # Forecasting
