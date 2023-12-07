@@ -212,6 +212,11 @@ ggplot(year_num_parts_df, aes(x = year, y = num_parts)) +
        x = "Year",
        y = "Number of Parts")
 ```
+Pearson correlation between year and num_parts
+```{r}
+cor(year_num_parts_df$year, year_num_parts_df$num_parts, method = "pearson")
+```
+
 ```{r}
 grouped_by_year <- sets_df %>%
   group_by(year) %>%
@@ -277,18 +282,18 @@ plot_ly(
 ```
 Top 10 themes based on number of sets
 ```{r}
-top_10_themes <- themes_data %>%
-  top_n(10, wt = count_sets) %>%
+top_15_themes <- themes_data %>%
+  top_n(15, wt = count_sets) %>%
   arrange(desc(count_sets))
 
-top_10_themes
+top_15_themes
 ```
 
 ```{r}
-ggplot(top_10_themes, aes(x=reorder(name_parent, count_sets), y=count_sets)) +
+ggplot(top_15_themes, aes(x=reorder(name_parent, count_sets), y=count_sets)) +
   geom_bar(stat="identity", fill = "#225555") +
   coord_flip() +
-  labs(title = "Number of sets in top 10 most popular themes ",
+  labs(title = "Number of sets in top 15 most popular themes",
        x = "Theme name",
        y = "Sum of sets") +
   theme_bw()
@@ -319,7 +324,50 @@ plot_ly(
     xaxis = list(title = "Year"),
     yaxis = list(title = "Count of Sets")
   )
+```
 
+```{r}
+top_15_themes_names <- top_15_themes$name_parent
+top_15_themes_data <- sets_themes_grouped[sets_themes_grouped$name_parent %in% top_15_themes_names, ]
+top_15_themes_data
+```
+
+```{r}
+plot_ly(
+    top_15_themes_data, 
+    x = ~year, 
+    y = ~count_sets, 
+    color = ~factor(name_parent),
+    type = "bar",
+    mode = "markers",
+    text = ~paste("Theme: ", name_parent, "<br>Year: ", year, "<br>Count of Sets: ", count_sets),
+    hoverinfo = "text"
+  ) %>%
+  layout(
+    title = "Count of Sets Over Time for top 15 Themes",
+    xaxis = list(title = "Year"),
+    yaxis = list(title = "Count of Sets"),
+    barmode = 'stack'
+  )
+```
+
+```{r}
+plot_ly(
+    top_15_themes_data, 
+    x = ~year, 
+    y = ~sum_parts, 
+    color = ~factor(name_parent),
+    type = "bar",
+    mode = "markers",
+    text = ~paste("Theme: ", name_parent, "<br>Year: ", year, "<br>Sum of parts: ", sum_parts),
+    hoverinfo = "text"
+  ) %>%
+  layout(
+    title = "Sum of Parts Over Time for top 15 Themes",
+    xaxis = list(title = "Year"),
+    yaxis = list(title = "Sum of Parts"),
+    barmode = 'stack'
+  )
 ```
 
 ```{r}
