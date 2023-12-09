@@ -25,6 +25,9 @@ library(dplyr)
 library(png)
 library(grid)
 library(plotly)
+library(gganimate)
+library(tidyr)
+library(forecast)
 ```
 # Load data
 ```{r, cache=TRUE, echo=TRUE}
@@ -200,6 +203,12 @@ knitr::kable(head(themes_with_parents_df))
 ```{r}
 sum(is.na(sets_df))
 ```
+Delete 2024 and 2023 from dataframe
+```{r}
+sets_df <- sets_df[!(sets_df$year %in% c(2023, 2024)), ]
+```
+
+
 #### Correlation between year and num_parts
 ```{r}
 year_num_parts_df <- select(sets_df, year, num_parts)
@@ -246,12 +255,57 @@ ggplot(grouped_by_year, aes(x = year, y = sum_parts)) +
   theme_bw()
 ```
 
+```{r}
+sets_stats <- year_num_parts_df %>%
+  group_by(year) %>%
+  summarise(
+    count_sets = n(),
+    sum_parts = sum(num_parts),
+    mean_parts = mean(num_parts),
+    median_parts = median(num_parts)
+  )
+```
+
+```{r}
+sets_stats_long <- sets_stats %>%
+  gather(variable, value, -year)
+
+p <- ggplot(sets_stats_long, aes(x = year, y = value, color = variable)) +
+  geom_line(size = 1.15) +
+  facet_wrap(~variable, scales = "free_y", ncol = 1) +
+  labs(title = "Yearly Sets Statistics",
+       x = "Year",
+       y = "Values") +
+  theme_minimal() +
+  scale_color_brewer(palette = "Set1") +
+  scale_y_continuous(labels = scales::number_format())
+
+animated_plot <- p + geom_point() + transition_reveal(year)
+anim_save("rebrickable_files/figure-html/year_stats.gif", animated_plot) 
+```
+```{r}
+knitr::include_graphics("rebrickable_files/figure-html/year_stats.gif")
+```
+```{r}
+correlation_matrix <- cor(sets_stats[, c("count_sets", "sum_parts", "mean_parts", "median_parts")], method = "pearson")
+correlation_data <- as.data.frame(as.table(correlation_matrix))
+
+ggplot(correlation_data, aes(Var1, Var2, fill = Freq)) +
+  geom_tile(color = "white") +
+  scale_fill_distiller(palette = "Blues", direction = 1) +
+  labs(title = "Correlation Heatmap",
+       x = "Attributes",
+       y = "Attributes") +
+  theme_bw()
+```
+
+
 #### Join sets with prepared themes
 ```{r}
 sets_themes <- left_join(sets_df, themes_with_parents_df, by = join_by(theme_id == id))
 sets_themes <- sets_themes %>% select(-set_num, -theme_id, -name)
-knitr::kable(head(sets_themes)) 
 ```
+
 156 Parent themes with number of sets and sum of parts
 ```{r}
 themes_data <- sets_themes %>%
@@ -367,25 +421,6 @@ plot_ly(
     yaxis = list(title = "Sum of Parts"),
     barmode = 'stack'
   )
-```
-```{r}
-#plot_ly(
-#    sets_themes_grouped, 
-#    x = ~year, 
-#    z = ~sum_parts,
-#    y = ~count_sets, 
-#    color = ~factor(name_parent),
-#    line=list(width=4),
-#    text = ~paste("Theme: ", name_parent, "<br>Year: ", year, "<br>Count of Sets: ", count_sets, "<br>Sum of Parts: ", sum_parts),
-#    hoverinfo = "text"
-#  ) %>%
-#  add_lines() %>%
-#  layout(
-#    title = "Count of Sets and Sum of Parts Over Time for Different Themes",
-#    xaxis = list(title = "Year"),
-#    zaxis = list(title = "Sum of Parts"),
-#    yaxis = list(title = "Count of Sets")
-#  )
 ```
 
 ### Parts
@@ -591,10 +626,10 @@ ggplotly(bar_plot, tooltip = c("text", "fill"))
 ## Analysis in inventories
 ### Minifigures
 ```{r}
-minifigures <- left_join(inventory_minifigs_df, minifigs_df, by = join_by(fig_num == fig_num))
-knitr::kable(head(minifigures))
+inventory_minifigures <- left_join(inventory_minifigs_df, minifigs_df, by = join_by(fig_num == fig_num))
+# knitr::kable(head(inventory_minifigures))
 
-top_stock_minfigures <- minifigures %>% 
+top_stock_minfigures <- inventory_minifigures %>% 
   select(-inventory_id, -num_parts) %>%
   group_by(fig_num) %>%
   summarise(
@@ -617,7 +652,7 @@ top_stock_minfigures %>%
 ### Parts
 ```{r}
 inventory_parts <- inner_join(inventory_parts_df, parts_df, by = join_by(part_num == part_num))
-knitr::kable(head(inventory_parts))
+# knitr::kable(head(inventory_parts))
 
 top_stock_parts <- inventory_parts %>% 
   group_by(part_num) %>%
@@ -644,7 +679,7 @@ top_stock_parts %>%
 ### Sets
 ```{r}
 inventory_sets <- inner_join(inventory_sets_df, sets_df, by = join_by(set_num == set_num))
-knitr::kable(head(inventory_sets))
+# knitr::kable(head(inventory_sets))
 
 top_stock_sets <- inventory_sets %>% 
   group_by(set_num) %>%
@@ -667,7 +702,65 @@ top_stock_sets %>%
   select(-img_url) %>%
   knitr::kable(format = "html")
 ```
-# Trends
 
 # Forecasting
+```{r}
+sets_yearly <- sets_themes %>%
+  group_by(year) %>%
+  summarise(
+    count_sets = n(),
+    sum_parts = sum(num_parts)
+  )
+```
+
+```{r}
+time_series_data_count_sets <- ts(sets_yearly$count_sets, start = min(sets_yearly$year), end=max(sets_yearly$year) - 2, frequency = 1)
+
+sets_forecast_model_count_sets <- auto.arima(time_series_data_count_sets)
+sets_forecast_count_sets <- forecast(sets_forecast_model_count_sets, h = 10)
+
+autoplot(sets_forecast_count_sets)
+```
+
+```{r}
+time_series_data_sum_parts <- ts(sets_yearly$sum_parts, start = min(sets_yearly$year), end=max(sets_yearly$year) - 2, frequency = 1)
+
+parts_forecast_model_sum_parts <- auto.arima(time_series_data_sum_parts)
+parts_forecast_sum_parts <- forecast(parts_forecast_model_sum_parts, h = 10)
+
+autoplot(parts_forecast_sum_parts)
+
+```
+
+
+
+```{r}
+sets_star_wars <- sets_themes[sets_themes$name_parent == 'Star Wars', ]
+
+sets_star_wars_yearly_count <- sets_star_wars %>%
+  group_by(year) %>%
+  summarise(
+    count_sets = n(),
+    sum_parts = sum(num_parts)
+  ) %>%
+  arrange(year)
+```
+
+```{r}
+time_series_data_sw_sets <- ts(sets_star_wars_yearly_count$count_sets, start = min(sets_star_wars_yearly_count$year), end=max(sets_star_wars_yearly_count$year))
+
+forecast_model_sets_sw <- auto.arima(time_series_data_sw_sets)
+forecast_sets_sw <- forecast(forecast_model_sets_sw, h=10)
+
+autoplot(forecast_sets_sw)
+```
+
+```{r}
+time_series_data_sw_parts <- ts(sets_star_wars_yearly_count$sum_parts, start = min(sets_star_wars_yearly_count$year), end=max(sets_star_wars_yearly_count$year))
+
+forecast_model_sets_parts <- auto.arima(time_series_data_sw_parts)
+forecast_parts_sw <- forecast(forecast_model_sets_parts, h=10)
+
+autoplot(forecast_parts_sw)
+```
 
