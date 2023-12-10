@@ -3,3 +3,6 @@ dplyr
 skimr
 png
 plotly
+gganimate
+tidyr
+forecast
