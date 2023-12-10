@@ -8,13 +8,13 @@ output:
     toc_float: yes
     theme: cosmo
 ---
-In this report, we will analyse data about LEGO. All data comes from https://rebrickable.com/downloads/, which is a site that allows users to share their MOCs (My Own Creation - constructions created by LEGO fans). 
+In this report, we will analyse data about LEGO. All data comes from https://rebrickable.com/downloads/, which is a site that allows users to share their MOCs (My Own Creation - constructions created by LEGO fans).
 
-We'll start by looking at the data schema, the tables and the data they contain. We will see how the tables interconnect and understand what the values of the different attributes are. We will also learn about the size of the entire dataset. The next step will be an analysis on the data from individual or linked tables. We will start with minifigures, then move on to parts and finish the analysis on sets. During the analyses, we will wrestle with missing data. Last but not least we will try to predict the future using forecasting. There we will focus on all sets and a Star Wars set.
+We'll start by looking at the data schema, the tables, and the data they contain. We will see how the tables interconnect and understand what the values of the different attributes are. We will also learn about the size of the entire dataset. The next step will be an analysis of the data from individual or linked tables. We will start with minifigures, then move on to parts and finish the analysis on sets. During the analysis, we will wrestle with missing data. Last but not least, we will try to predict the future using forecasting. There we will focus on all sets and a Star Wars set.
 
-After the analysis, the most striking observation is that LEGO is growing all the time. Every year there are more sets and the number of parts increases. Some interesting insights can be reached by observing the data on themes. Many of them are well-known brands (Ben 10, Avatar, Angry Bird) that appear at the peak of the brand hype. In addition to this, there are many generic themes (Town, City) that have been with LEGO for a long time and are becoming more popular every year. It's also worth to note that at the beginning LEGO didn't cooperate with many external brands which is why we don't see many sets of external brands at the beginning of the company's operation.
+After the analysis, the most striking observation is that LEGO is growing all the time. Every year, there are more sets, and the number of parts increases. Some interesting insights can be reached by observing the data on themes. Many of them are well-known brands (Ben 10, Avatar, Angry Bird) that appear at the peak of the brand hype. In addition to this, there are many generic themes (Town, City) that have been with LEGO for a long time and are becoming more popular every year. It's also worth noting that at the beginning, LEGO didn't cooperate with many external brands, which is why we don't see many sets of external brands at the beginning of the company's operation.
 
-Most of the plots are interactive so keep in mind that if you want to find out more about presented data just hover over it.
+Most of the plots are interactive, so keep in mind that if you want to find out more about the presented data, just hover over it.
 
 
 ```{r setup, include=FALSE}
@@ -38,6 +38,7 @@ library(tidyr)
 library(forecast)
 ```
 
+# Load data
 ```{r, cache=TRUE, echo=FALSE}
 load_csv <- function(csv_name, data_folder = 'data') {
   df <- read.csv(file.path(data_folder, csv_name))
@@ -79,7 +80,7 @@ dataframes_names <- names(dataframes_list)
 
 # Basic tables analysis
 ## Data schema
-We can clearly see that data is divided into 3 parts. Going from left to right, the first concerns parts and their color, second concerns minifigures and the last one is about sets. All parts have table with prefix inventory (for example: inventory_sets) which contains stock data. It is possible to connect data through inventories table. 
+We can clearly see that the data is divided into three parts. Going from left to right, the first concerns parts and their color, the second concerns minifigures, and the last one is about sets. All parts have a table with the prefix inventory (for example inventory_sets) which contains stock data. It is possible to connect data through inventories table.
 ```{r, fig.height = 6}
 image_path <- "data/rebrickable_schema_v3.png"
 rebrickable_schema <- readPNG(image_path)
@@ -321,7 +322,7 @@ top_stock_minfigures %>%
   select(name, img_url, quantity) %>%
   mutate(img_tag = paste0('![](', img_url, '){width=30%}')) %>%
   select(-img_url) %>%
-  knitr::kable(format = "html")
+  knitr::kable(format = "html", align = "ccc")
 ```
 
 ## Parts
@@ -331,7 +332,7 @@ is_na_parts <- sum(is.na(parts_df))
 ##### Sum of rows with NA value: `r is_na_parts[1]`
 
 #### Material Type of Lego Parts
-<strong>Log10(Number of Parts)</strong> is used instead of just displaying Number of Parts because difference between <strong>Plastic</strong> and other materials is so big that they would be almost invisible on plot.
+<strong>Log10(Number of Parts)</strong> is used instead of just displaying Number of Parts because the difference between <strong>Plastic</strong> and other materials is so big that they would be almost invisible on the plot.
 ```{r}
 parts_df_material_grouped <- parts_df %>%
   group_by(part_material) %>%
@@ -418,7 +419,7 @@ na_elements_where <- elements_df %>%
 knitr::kable(na_elements_where)
 ```
 
-In the data schema there is no indication of what the design_id is or where it is located, so we will remove the column from the dataframe
+In the data schema, there is no indication of what the design_id is or where it is located, so we will remove the column from the dataframe
 ```{r}
 elements_df <- select(elements_df, -design_id)
 ```
@@ -563,7 +564,7 @@ top_stock_parts %>%
   select(name, img_url, quantity) %>%
   mutate(img_tag = paste0('![](', img_url, '){width=30%}')) %>%
   select(-img_url) %>%
-  knitr::kable(format = "html")
+  knitr::kable(format = "html", align = "ccc")
 ```
 
 ## Colors
@@ -647,7 +648,7 @@ ggplotly(bar_plot, tooltip = c("text"))
 ```
 
 ## Themes
-### Themes sum of rows with NA value
+#### Themes sum of rows with NA value
 ```{r}
 is_na_themes <- sum(is.na(themes_df))
 ```
@@ -685,14 +686,14 @@ is_na_sets <- sum(is.na(sets_df))
 ```
 ##### Sum of rows with NA value: `r is_na_sets[1]`
 
-In sets dataframe there is data from 2024 and 2023. At the time the report was created, the data for these years was not yet complete so we will delete each observation from 2024 and 2023.
+In the sets dataframe, there is data from 2024 and 2023. At the time the report was created, the data for these years was not yet complete, so we will delete each observation from 2024 and 2023.
 ```{r}
 sets_df <- sets_df[!(sets_df$year %in% c(2023, 2024)), ]
 ```
 
 #### Histogram for Number of Parts in sets_df
 
-We will remove some rows from sets_df which has really high Number of Parts. They diverge significantly from other values, making our graph unreadable.
+We will remove some rows from sets_df that have a really high Number of Parts. They diverge significantly from other values, making our graph unreadable.
 ```{r}
 high_number_of_parts <- sets_df[sets_df$num_parts > 5000, ]
 knitr::kable(head(high_number_of_parts))
@@ -818,7 +819,7 @@ anim_save("rebrickable_files/figure-html/year_stats.gif", animated_plot)
 knitr::include_graphics("rebrickable_files/figure-html/year_stats.gif")
 ```
 
-The most interesting thing in heatmap below is really low correlation between median and sum_parts/count_sets. This means that altough the number of parts and sets is increasing the median does not share this trend. 
+The most interesting thing in the heatmap below is the really low correlation between median and sum_parts/count_sets. This means that although the number of parts and sets is increasing, the median does not share this trend.
 ```{r}
 correlation_matrix <- cor(sets_stats[, c("count_sets", "sum_parts", "mean_parts", "median_parts")], method = "pearson")
 correlation_data <- as.data.frame(as.table(correlation_matrix))
@@ -989,7 +990,7 @@ top_stock_sets %>%
   select(name, img_url, sum_quantity) %>%
   mutate(img_tag = paste0('![](', img_url, '){width=30%}')) %>%
   select(-img_url) %>%
-  knitr::kable(format = "html")
+  knitr::kable(format = "html", align = "ccc")
 ```
 
 # Forecasting
@@ -1002,7 +1003,7 @@ sets_yearly <- sets_themes %>%
   )
 ```
 
-## Forecast Number of Sets
+## Number of Sets
 ```{r}
 time_series_data_count_sets <- ts(sets_yearly$count_sets, start = min(sets_yearly$year), end=max(sets_yearly$year) - 2, frequency = 1)
 
@@ -1027,7 +1028,7 @@ forecast_count_sets_2030 <- format(forecast_count_sets_2030$`Point Forecast`, sc
 ```
 Model predicts that in <strong>2025</strong> there will be: <strong>`r forecast_count_sets_2025`</strong> sets and in <strong>2030</strong> there will be: <strong>`r forecast_count_sets_2030`</strong> sets.
 
-## Forecast Number of Parts in all Sets
+## Number of Parts in all Sets
 ```{r}
 time_series_data_sum_parts <- ts(sets_yearly$sum_parts, start = min(sets_yearly$year), end=max(sets_yearly$year) - 2, frequency = 1)
 
@@ -1066,7 +1067,7 @@ sets_star_wars_yearly_count <- sets_star_wars %>%
   arrange(year)
 ```
 
-## Forecast Number of Star Wars Sets
+## Number of Star Wars Sets
 ```{r}
 time_series_data_sw_sets <- ts(sets_star_wars_yearly_count$count_sets, start = min(sets_star_wars_yearly_count$year), end=max(sets_star_wars_yearly_count$year))
 
@@ -1091,7 +1092,7 @@ forecast_sets_sw_2030 <- format(forecast_sets_sw_2030$`Point Forecast`, scientif
 ```
 Model predicts that in <strong>2025</strong> there will be: <strong>`r forecast_sets_sw_2025`</strong> Star Wars sets and in <strong>2030</strong> there will be: <strong>`r forecast_sets_sw_2030`</strong> Star Wars sets.
 
-## Forecast Number of Parts in Star Wars Sets
+## Number of Parts in Star Wars Sets
 ```{r}
 time_series_data_sw_parts <- ts(sets_star_wars_yearly_count$sum_parts, start = min(sets_star_wars_yearly_count$year), end=max(sets_star_wars_yearly_count$year))
 
